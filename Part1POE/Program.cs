@@ -38,7 +38,7 @@ class Program
         Console.ResetColor();
 
         // Welcome message with user name
-        Console.WriteLine("\nHello! What's your name?");
+        Console.WriteLine("\nHello! I'm Raihaans Chatbot! What's your name?");
         string userName = Console.ReadLine();
         if (string.IsNullOrWhiteSpace(userName))
         {
