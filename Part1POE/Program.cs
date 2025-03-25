@@ -26,15 +26,16 @@ class Program
 
         // Display new ASCII art
         Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine("   +-------------------+");
-        Console.WriteLine("   | Raihaan's Chatbot |");
-        Console.WriteLine("   +-------------------+");
-        Console.WriteLine("         _______");
-        Console.WriteLine("        /       \\");
-        Console.WriteLine("       /_________\\");
-        Console.WriteLine("       |  Cyber  |");
-        Console.WriteLine("       |  Safe   |");
-        Console.WriteLine("       |_________|");
+        Console.WriteLine(" ____       _ _                       _     ");
+        Console.WriteLine("|  _ \\ __ _(_) |__   __ _  __ _ _ __ ( )___ ");
+        Console.WriteLine("| |_) / _` | | '_ \\ / _` |/ _` | '_ \\|// __|");
+        Console.WriteLine("|  _ < (_| | | | | | (_| | (_| | | | | \\__ \\");
+        Console.WriteLine("|_| \\_\\__,_|_|_| |_|\\__,_|\\__,_|_| |_| |___/");
+        Console.WriteLine("  ____ _           _   _           _        ");
+        Console.WriteLine(" / ___| |__   __ _| |_| |__   ___ | |_      ");
+        Console.WriteLine("| |   | '_ \\ / _` | __| '_ \\ / _ \\| __|     ");
+        Console.WriteLine("| |___| | | | (_| | |_| |_) | (_) | |_      ");
+        Console.WriteLine(" \\____|_| |_|\\__,_|\\__|_.__/ \\___/ \\__|     ");
         Console.ResetColor();
 
         // Welcome message with user name
