@@ -17,7 +17,7 @@ class Program
         }
 
         // Display ASCII art
-        Console.ForegroundColor = ConsoleColor.Red;
+        Console.ForegroundColor = ConsoleColor.Maroon;
         Console.WriteLine("  ____      _                ____                     _ ");
         Console.WriteLine(" / ___|   _| |__   ___ _ __ / ___|_   _  __ _ _ __ __| |");
         Console.WriteLine("| |  | | | | '_ \\ / _ \\ '__| |  _| | | |/ _` | '__/ _` |");
