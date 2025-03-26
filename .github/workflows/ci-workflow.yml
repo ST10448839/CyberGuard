@@ -29,6 +29,13 @@ jobs:
       - name: Build Project
         run: msbuild -t:build -p:Configuration=Release
 
-      # Optional Step 5: Check for syntax errors (basic verification)
+      # Step 5: Ensure build output directory exists
+      - name: Ensure Build Output Directory
+        run: |
+          if not exist bin\Release (
+            mkdir bin\Release
+          )
+
+      # Step 6: Check for build output (basic verification)
       - name: Verify Build Output
         run: dir bin\Release
