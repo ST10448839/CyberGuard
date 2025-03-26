@@ -17,7 +17,7 @@ class Program
         }
 
         // Display ASCII art
-        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.ForegroundColor = ConsoleColor.Red;
         Console.WriteLine("  ____      _                ____                     _ ");
         Console.WriteLine(" / ___|   _| |__   ___ _ __ / ___|_   _  __ _ _ __ __| |");
         Console.WriteLine("| |  | | | | '_ \\ / _ \\ '__| |  _| | | |/ _` | '__/ _` |");
@@ -33,7 +33,7 @@ class Program
         {
             userName = "User"; // Default name if input is empty
         }
-        Console.ForegroundColor = ConsoleColor.Green;
+        Console.ForegroundColor = ConsoleColor.Yellow;
         Console.WriteLine("========================================");
         TypeText($"\tWelcome, {userName}!");
         Console.WriteLine("========================================");
@@ -77,7 +77,7 @@ class Program
             else if (input.Contains("what") && input.Contains("ask"))
             {
                 Console.ForegroundColor = ConsoleColor.Magenta;
-                Console.WriteLine("You can ask about password safety, phishing, or safe browsing.");
+                Console.WriteLine("You can ask about password safety, phishing, safe browsing or anything to do with cyber security.");
                 Console.ResetColor();
             }
             else if (input.Contains("password") || input.Contains("pass"))
