@@ -4,7 +4,7 @@ name: CI Workflow
 on:
   push:
     branches:
-      - main
+      - master
 
 # Define the jobs to run
 jobs:
