@@ -1,45 +1,33 @@
 ﻿using System;
-using NAudio.Wave;
+using System.Media; // Add this for SoundPlayer
 
 class Program
 {
     static void Main(string[] args)
     {
-        // Play voice greeting with NAudio
+        // Play voice greeting with System.Media.SoundPlayer
         try
         {
-            using (var audioFile = new AudioFileReader("Staying Safe in Digital World.wav"))
-            using (var outputDevice = new WaveOutEvent())
-            {
-                outputDevice.Init(audioFile);
-                outputDevice.Play();
-                while (outputDevice.PlaybackState == PlaybackState.Playing)
-                {
-                    Thread.Sleep(100); // Wait for playback to finish
-                }
-            }
+            SoundPlayer player = new SoundPlayer("Staying Safe in Digital World.wav");
+            player.PlaySync(); // PlaySync blocks until the audio finishes
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error playing audio: {ex.Message}");
         }
 
-        // Display new ASCII art
+        // Display ASCII art
         Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine(" ____       _ _                       _     ");
-        Console.WriteLine("|  _ \\ __ _(_) |__   __ _  __ _ _ __ ( )___ ");
-        Console.WriteLine("| |_) / _` | | '_ \\ / _` |/ _` | '_ \\|// __|");
-        Console.WriteLine("|  _ < (_| | | | | | (_| | (_| | | | | \\__ \\");
-        Console.WriteLine("|_| \\_\\__,_|_|_| |_|\\__,_|\\__,_|_| |_| |___/");
-        Console.WriteLine("  ____ _           _   _           _        ");
-        Console.WriteLine(" / ___| |__   __ _| |_| |__   ___ | |_      ");
-        Console.WriteLine("| |   | '_ \\ / _` | __| '_ \\ / _ \\| __|     ");
-        Console.WriteLine("| |___| | | | (_| | |_| |_) | (_) | |_      ");
-        Console.WriteLine(" \\____|_| |_|\\__,_|\\__|_.__/ \\___/ \\__|     ");
+        Console.WriteLine("  ____      _                ____                     _ ");
+        Console.WriteLine(" / ___|   _| |__   ___ _ __ / ___|_   _  __ _ _ __ __| |");
+        Console.WriteLine("| |  | | | | '_ \\ / _ \\ '__| |  _| | | |/ _` | '__/ _` |");
+        Console.WriteLine("| |__| |_| | |_) |  __/ |  | |_| | |_| | (_| | | | (_| |");
+        Console.WriteLine(" \\____\\__, |_.__/ \\___|_|   \\____|\\__,_|\\__,_|_|  \\__,_|");
+        Console.WriteLine("      |___/                                             ");
         Console.ResetColor();
 
         // Welcome message with user name
-        Console.WriteLine("\nHello! I'm Raihaans Chatbot! What's your name?");
+        Console.WriteLine("\nHello! I'm CyberGuard! What's your name?");
         string userName = Console.ReadLine();
         if (string.IsNullOrWhiteSpace(userName))
         {

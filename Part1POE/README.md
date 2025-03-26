@@ -1,2 +1,4 @@
-# CybersecurityChatbot
-A C# chatbot for cybersecurity education.
+In order to run the code, first click on the run button at the top, the code will then begin running and the voive greeting will be played.
+After the voice greeting has ended, the chatbot will begin with the name of the chatbot and asking for your name.
+After inserting your name, the chatbot will ask you what you would like to know, you input what it is you want to know and the chatbot will then respond to your input.
+If you choose you want to exit the chatbot, just type in "exit" and the chatbot will close.
