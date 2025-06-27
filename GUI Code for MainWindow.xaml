@@ -1,0 +1,97 @@
+<Window x:Class="CybersecurityChatbot.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="CyberGuard - Cybersecurity Awareness Chatbot" Height="600" Width="800" Loaded="Window_Loaded">
+	<!-- Define styles for UI consistency -->
+	<Window.Resources>
+		<Style x:Key="ButtonStyle" TargetType="Button">
+			<Setter Property="Background" Value="#4CAF50"/>
+			<Setter Property="Foreground" Value="White"/>
+			<Setter Property="FontSize" Value="14"/>
+			<Setter Property="Margin" Value="5"/>
+			<Setter Property="Padding" Value="10,5"/>
+			<Setter Property="BorderThickness" Value="0"/>
+			<Setter Property="Cursor" Value="Hand"/>
+		</Style>
+		<Style x:Key="TextBlockStyle" TargetType="TextBlock">
+			<Setter Property="FontSize" Value="14"/>
+			<Setter Property="Margin" Value="5"/>
+			<Setter Property="TextWrapping" Value="Wrap"/>
+		</Style>
+		<Style x:Key="TextBoxStyle" TargetType="TextBox">
+			<Setter Property="FontSize" Value="14"/>
+			<Setter Property="Margin" Value="5"/>
+			<Setter Property="Padding" Value="5"/>
+			<Setter Property="AcceptsReturn" Value="True"/>
+		</Style>
+	</Window.Resources>
+	<Grid>
+		<TabControl>
+			<!-- Chatbot Tab (Parts 1 and 2 + NLP) -->
+			<TabItem Header="Chatbot">
+				<Grid>
+					<Grid.RowDefinitions>
+						<RowDefinition Height="*"/>
+						<RowDefinition Height="Auto"/>
+					</Grid.RowDefinitions>
+					<ScrollViewer x:Name="ChatScrollViewer" VerticalScrollBarVisibility="Auto">
+						<TextBlock x:Name="ChatDisplay" Style="{StaticResource TextBlockStyle}"/>
+					</ScrollViewer>
+					<StackPanel Grid.Row="1" Orientation="Horizontal">
+						<TextBox x:Name="UserInput" Style="{StaticResource TextBoxStyle}" Width="650" KeyDown="UserInput_KeyDown"/>
+						<Button Content="Send" Style="{StaticResource ButtonStyle}" Click="SendButton_Click"/>
+					</StackPanel>
+				</Grid>
+			</TabItem>
+			<!-- Task Assistant Tab -->
+			<TabItem Header="Task Assistant">
+				<Grid>
+					<StackPanel>
+						<TextBlock Text="Add New Task" Style="{StaticResource TextBlockStyle}" FontWeight="Bold"/>
+						<TextBox x:Name="TaskTitle" Style="{StaticResource TextBoxStyle}" ToolTip="Enter task title (e.g., Enable 2FA)"/>
+						<TextBox x:Name="TaskDescription" Style="{StaticResource TextBoxStyle}" ToolTip="Enter task description" Height="60"/>
+						<CheckBox x:Name="ReminderCheckBox" Content="Set Reminder" Margin="5"/>
+						<DatePicker x:Name="ReminderDate" IsEnabled="{Binding IsChecked, ElementName=ReminderCheckBox}"/>
+						<Button Content="Add Task" Style="{StaticResource ButtonStyle}" Click="AddTaskButton_Click"/>
+						<TextBlock Text="Task List" Style="{StaticResource TextBlockStyle}" FontWeight="Bold" Margin="5,10,5,5"/>
+						<ListBox x:Name="TaskList" Height="300">
+							<ListBox.ItemTemplate>
+								<DataTemplate>
+									<StackPanel Orientation="Horizontal">
+										<TextBlock Text="{Binding DisplayText}" Style="{StaticResource TextBlockStyle}"/>
+										<Button Content="Complete" Style="{StaticResource ButtonStyle}" Click="CompleteTaskButton_Click" Tag="{Binding}"/>
+										<Button Content="Delete" Style="{StaticResource ButtonStyle}" Click="DeleteTaskButton_Click" Tag="{Binding}"/>
+									</StackPanel>
+								</DataTemplate>
+							</ListBox.ItemTemplate>
+						</ListBox>
+					</StackPanel>
+				</Grid>
+			</TabItem>
+			<!-- Quiz Game Tab -->
+			<TabItem Header="Quiz Game">
+				<Grid>
+					<StackPanel>
+						<TextBlock x:Name="QuizQuestion" Style="{StaticResource TextBlockStyle}"/>
+						<StackPanel x:Name="QuizOptionsPanel"/>
+						<TextBlock x:Name="QuizFeedback" Style="{StaticResource TextBlockStyle}" Foreground="Green"/>
+						<Button Content="Submit Answer" Style="{StaticResource ButtonStyle}" Click="SubmitQuizAnswer_Click"/>
+						<Button Content="Start Quiz" Style="{StaticResource ButtonStyle}" Click="StartQuizButton_Click"/>
+					</StackPanel>
+				</Grid>
+			</TabItem>
+			<!-- Activity Log Tab -->
+			<TabItem Header="Activity Log">
+				<Grid>
+					<ListBox x:Name="ActivityLogList" Height="500">
+						<ListBox.ItemTemplate>
+							<DataTemplate>
+								<TextBlock Text="{Binding}" Style="{StaticResource TextBlockStyle}"/>
+							</DataTemplate>
+						</ListBox.ItemTemplate>
+					</ListBox>
+				</Grid>
+			</TabItem>
+		</TabControl>
+	</Grid>
+</Window>
