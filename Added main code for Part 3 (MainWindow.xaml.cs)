@@ -1,0 +1,620 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Media;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+
+namespace CybersecurityChatbot
+{
+    public partial class MainWindow : Window
+    {
+        // Ported from console app
+        private static Dictionary<string, List<string>> keywordResponses;
+        private static Dictionary<string, string> userMemory;
+        private static Dictionary<string, Dictionary<string, string>> sentimentResponses;
+        private static Random random;
+        private static string currentTopic;
+        private delegate string ResponseGenerator(string input);
+
+        // Part 3 data structures
+        private List<TaskItem> tasks = new List<TaskItem>();
+        private List<string> activityLog = new List<string>();
+        private List<QuizQuestion> quizQuestions;
+        private int currentQuizQuestionIndex = -1;
+        private int quizScore = 0;
+        private bool isTyping = false;
+
+        public MainWindow()
+        {
+            InitializeComponent();
+            InitializeData();
+            InitializeQuizQuestions();
+            TaskList.ItemsSource = tasks;
+            ActivityLogList.ItemsSource = activityLog;
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            // Play audio
+            try
+            {
+                SoundPlayer player = new SoundPlayer("Staying Safe in Digital World.wav");
+                player.PlaySync();
+            }
+            catch (Exception ex)
+            {
+                LogActivity($"Error playing audio: {ex.Message}");
+                ChatDisplay.Text = $"Error playing audio: {ex.Message}\n";
+            }
+
+            // Display ASCII art
+            string asciiArt = @"  ____      _                ____                     _ 
+ / ___|   _| |__   ___ _ __ / ___|_   _  __ _ _ __ __| | 
+| |  | | | | '_ \ / _ \ '__| |  _| | | |/ _` | '__/ _` | 
+| |__| |_| | |_) |  __/ |  | |_| | |_| | (_| | | | (_| | 
+ \____\__,_|_.__/ \___|_|   \____|\__,_|\__,_|_|  \__,_|
+      |___/                                             ";
+            ChatDisplay.Text += $"{asciiArt}\n\n";
+
+            // Initial greeting and name prompt
+            ChatDisplay.Text += "Hello! I'm CyberGuard! What's your name?\n";
+            UserInput.Focus();
+        }
+
+        private void SendButton_Click(object sender, RoutedEventArgs e)
+        {
+            ProcessUserInput();
+        }
+
+        private void UserInput_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                ProcessUserInput();
+            }
+        }
+
+        private async void ProcessUserInput()
+        {
+            if (isTyping) return; // Prevent multiple inputs during typing
+            string input = UserInput.Text.Trim();
+            if (string.IsNullOrEmpty(input))
+            {
+                await TypeText("Please type something!");
+                return;
+            }
+
+            // Display user input
+            ChatDisplay.Text += $"\nYou: {input}\n";
+            UserInput.Clear();
+
+            // Handle name input if not set
+            if (!userMemory.ContainsKey("name"))
+            {
+                string userName = string.IsNullOrWhiteSpace(input) ? "User" : input;
+                userMemory["name"] = userName;
+                await TypeText($"Welcome, {userName}!\nWhat would you like to know? (Type 'exit' to quit)");
+                LogActivity($"User set name: {userName}");
+                return;
+            }
+
+            // Exit command
+            if (input.ToLower() == "exit")
+            {
+                await TypeText("Goodbye! Stay safe online!");
+                LogActivity("Chatbot exited");
+                Close();
+                return;
+            }
+
+            // Process input using delegate
+            ResponseGenerator generateResponse = ProcessInput;
+            string response = generateResponse(input.ToLower());
+            await TypeText(response);
+            LogActivity($"User input: {input} -> Response: {response}");
+        }
+
+        private async Task TypeText(string text)
+        {
+            isTyping = true;
+            foreach (char c in text)
+            {
+                ChatDisplay.Text += c;
+                await Task.Delay(50); // 50ms delay per character
+                ChatScrollViewer.ScrollToEnd(); // Scroll to the bottom
+            }
+            ChatDisplay.Text += "\n";
+            isTyping = false;
+        }
+
+        private string ProcessInput(string input)
+        {
+            // Part 3 NLP: Handle task and reminder commands
+            if (Regex.IsMatch(input, @"add\s+task|create\s+task|new\s+task"))
+            {
+                string taskTitle = ExtractTaskTitle(input);
+                string taskDescription = $"Complete cybersecurity task: {taskTitle}";
+                var task = new TaskItem { Title = taskTitle, Description = taskDescription };
+                tasks.Add(task);
+                TaskList.Items.Refresh();
+                LogActivity($"Task added: '{taskTitle}' (no reminder set)");
+                return $"Task added: '{taskTitle}'. Would you like to set a reminder for this task?";
+            }
+            else if (Regex.IsMatch(input, @"set\s+reminder|remind\s+me|can\s+you\s+remind\s+me"))
+            {
+                string taskTitle = ExtractTaskTitle(input);
+                string taskDescription = $"Complete cybersecurity task: {taskTitle}";
+                DateTime? reminderDate = null;
+                string reminderDisplay = null;
+
+                // Parse relative time phrases
+                if (input.Contains("tomorrow", StringComparison.OrdinalIgnoreCase))
+                {
+                    reminderDate = DateTime.Today.AddDays(1);
+                    reminderDisplay = "tomorrow's date";
+                }
+                else if (Regex.IsMatch(input, @"\d+\s*(day|days)", RegexOptions.IgnoreCase))
+                {
+                    var match = Regex.Match(input, @"\d+\s*(day|days)", RegexOptions.IgnoreCase);
+                    if (int.TryParse(match.Value.Split()[0], out int days))
+                    {
+                        reminderDate = DateTime.Today.AddDays(days);
+                        reminderDisplay = $"in {days} day{(days == 1 ? "" : "s")}";
+                    }
+                }
+                else if (input.Contains("next week", StringComparison.OrdinalIgnoreCase))
+                {
+                    reminderDate = DateTime.Today.AddDays(7);
+                    reminderDisplay = "next week";
+                }
+                else if (Regex.IsMatch(input, @"\d+\s*(week|weeks)", RegexOptions.IgnoreCase))
+                {
+                    var match = Regex.Match(input, @"\d+\s*(week|weeks)", RegexOptions.IgnoreCase);
+                    if (int.TryParse(match.Value.Split()[0], out int weeks))
+                    {
+                        reminderDate = DateTime.Today.AddDays(weeks * 7);
+                        reminderDisplay = $"in {weeks} week{(weeks == 1 ? "" : "s")}";
+                    }
+                }
+
+                var task = new TaskItem { Title = taskTitle, Description = taskDescription };
+                if (reminderDate.HasValue)
+                {
+                    task.Reminder = reminderDate.Value;
+                    task.HasReminder = true;
+                    tasks.Add(task);
+                    TaskList.Items.Refresh();
+                    LogActivity($"Reminder set for '{taskTitle}' on {reminderDisplay}");
+                    return $"Reminder set for '{taskTitle}' on {reminderDisplay}.";
+                }
+                else
+                {
+                    tasks.Add(task);
+                    TaskList.Items.Refresh();
+                    LogActivity($"Task added: '{taskTitle}' (no reminder set)");
+                    return $"Task added: '{taskTitle}'. Would you like to set a reminder for this task?";
+                }
+            }
+            else if (Regex.IsMatch(input, @"show\s+activity\s+log|what\s+have\s+you\s+done|log\s+history"))
+            {
+                string logSummary = "Here’s a summary of recent actions:\n" + string.Join("\n", activityLog.TakeLast(5));
+                return logSummary + "\nCheck the Activity Log tab for the full list.";
+            }
+            else if (Regex.IsMatch(input, @"start\s+quiz|play\s+game|quiz\s+me"))
+            {
+                return "Please use the Quiz Game tab to start the cybersecurity quiz.";
+            }
+
+            // Ported Part 1 and 2 logic
+            if (input.Contains("interested in") || input.Contains("like to learn") || input.Contains("i like"))
+            {
+                foreach (var kw in keywordResponses.Keys)
+                {
+                    if (input.Contains(kw, StringComparison.OrdinalIgnoreCase))
+                    {
+                        userMemory["favoriteTopic"] = kw;
+                        currentTopic = kw;
+                        return $"Got it, {userMemory["name"]}! I'll remember you're interested in {kw}. {GetRandomResponse(kw)}";
+                    }
+                }
+                return "I didn’t catch which topic you’re interested in. Try saying something like 'I’m interested in passwords'!";
+            }
+
+            // Detect sentiment
+            string sentiment = sentimentResponses.Keys.FirstOrDefault(s => input.Contains(s, StringComparison.OrdinalIgnoreCase));
+            string keyword = keywordResponses.Keys.FirstOrDefault(k => input.Contains(k, StringComparison.OrdinalIgnoreCase));
+
+            if (sentiment != null && keyword != null)
+            {
+                currentTopic = keyword;
+                string sentimentResponse = sentimentResponses[sentiment].ContainsKey(keyword)
+                    ? sentimentResponses[sentiment][keyword]
+                    : sentimentResponses[sentiment]["default"];
+                return $"{sentimentResponse} {GetRandomResponse(keyword)}";
+            }
+            else if (sentiment != null)
+            {
+                string sentimentResponse = sentimentResponses[sentiment]["default"];
+                return $"{sentimentResponse} Try asking about a specific topic like passwords or scams!";
+            }
+
+            if (keyword != null)
+            {
+                currentTopic = keyword;
+                return GetRandomResponse(keyword);
+            }
+
+            if ((input.Contains("more") || input.Contains("details") || input.Contains("rephrase") ||
+                 input.Contains("understand") || input.Contains("clarify")) && !string.IsNullOrEmpty(currentTopic))
+            {
+                string prefix = input.Contains("rephrase") || input.Contains("understand") || input.Contains("clarify")
+                    ? "Let me put it another way: "
+                    : $"Here’s more on {currentTopic}: ";
+                return $"{prefix}{GetRandomResponse(currentTopic)}";
+            }
+
+            if (input.Contains("how") && input.Contains("you"))
+            {
+                return "I'm doing great, thanks for asking! How about you?";
+            }
+            if (input.Contains("purpose") || (input.Contains("what") && input.Contains("do")))
+            {
+                return "I'm here to educate you on staying safe online!";
+            }
+            if (input.Contains("what") && input.Contains("ask"))
+            {
+                return "You can ask about password safety, phishing, scams, privacy, or other cybersecurity topics!";
+            }
+
+            if (userMemory.ContainsKey("favoriteTopic") && random.Next(0, 3) == 0)
+            {
+                string topic = userMemory["favoriteTopic"];
+                return $"Hi {userMemory["name"]}, since you’re interested in {topic}, here’s a tip: {GetRandomResponse(topic)}";
+            }
+
+            return "I didn’t quite understand that. Try asking about password safety, phishing, or privacy!";
+        }
+
+        private string ExtractTaskTitle(string input)
+        {
+            var match = Regex.Match(input, @"(?:add|create|new)\s+task\s+(.+)|(?:set\s+reminder|remind\s+me|can\s+you\s+remind\s+me)\s+(.+)", RegexOptions.IgnoreCase);
+            return match.Success ? (match.Groups[1].Success ? match.Groups[1].Value.Trim() : match.Groups[2].Value.Trim()) : "Untitled Task";
+        }
+
+        private string GetRandomResponse(string keyword)
+        {
+            var responses = keywordResponses[keyword];
+            return responses[random.Next(responses.Count)];
+        }
+
+        private void InitializeData()
+        {
+            random = new Random();
+            userMemory = new Dictionary<string, string>();
+            currentTopic = string.Empty;
+
+            keywordResponses = new Dictionary<string, List<string>>
+            {
+                { "password", new List<string>
+                    {
+                        "Use strong passwords with letters, numbers, and symbols. Don’t reuse them!",
+                        "Enable two-factor authentication for extra password security.",
+                        "Use a password manager to generate and store complex passwords."
+                    }
+                },
+                { "phishing", new List<string>
+                    {
+                        "Phishing emails trick you into giving info. Check sender addresses carefully!",
+                        "Hover over links to verify their destination before clicking.",
+                        "Be wary of emails asking for personal information unexpectedly."
+                    }
+                },
+                { "scam", new List<string>
+                    {
+                        "Scammers often pose as trusted organizations. Verify before sharing info.",
+                        "Report suspicious calls or emails to authorities.",
+                        "Avoid sending money to unsolicited requests."
+                    }
+                },
+                { "privacy", new List<string>
+                    {
+                        "Review privacy settings on your accounts to control what you share.",
+                        "Use a VPN on public Wi-Fi to protect your data.",
+                        "Avoid sharing sensitive info on social media."
+                    }
+                },
+                { "malware", new List<string>
+                    {
+                        "Malware can steal data or harm devices. Install antivirus software!",
+                        "Don’t download files from untrusted sources.",
+                        "Scan your device regularly for malware."
+                    }
+                },
+                { "wifi", new List<string>
+                    {
+                        "Avoid public Wi-Fi for sensitive tasks unless using a VPN.",
+                        "Hackers can snoop on unsecured networks. Stay cautious!",
+                        "Use strong passwords for your home Wi-Fi."
+                    }
+                },
+                { "social", new List<string>
+                    {
+                        "On social media, avoid oversharing personal info.",
+                        "Use privacy settings to protect your accounts.",
+                        "Be cautious of friend requests from unknown profiles."
+                    }
+                }
+            };
+
+            sentimentResponses = new Dictionary<string, Dictionary<string, string>>
+            {
+                { "worried", new Dictionary<string, string>
+                    {
+                        { "password", "It's completely understandable to feel that way. Weak passwords can be a big risk. Let me share some tips to help you stay safe." },
+                        { "phishing", "It's completely understandable to feel that way. Phishing emails can be very deceptive. Let me share some tips to help you stay safe." },
+                        { "scam", "It's completely understandable to feel that way. Scammers can be very convincing. Let me share some tips to help you stay safe." },
+                        { "privacy", "It's completely understandable to feel that way. Privacy breaches can feel overwhelming. Let me share some tips to help you stay safe." },
+                        { "malware", "It's completely understandable to feel that way. Malware can be a serious threat. Let me share some tips to help you stay safe." },
+                        { "wifi", "It's completely understandable to feel that way. Public Wi-Fi can be risky. Let me share some tips to help you stay safe." },
+                        { "social", "It's completely understandable to feel that way. Social media can expose your data. Let me share some tips to help you stay safe." },
+                        { "default", "It's completely understandable to feel that way. Cybersecurity can be complex. Let me share some tips to help you stay safe." }
+                    }
+                },
+                { "curious", new Dictionary<string, string>
+                    {
+                        { "password", "That’s a great mindset! Password security is key to staying safe online. Here’s some info to fuel your curiosity." },
+                        { "phishing", "That’s a great mindset! Learning about phishing can keep you safe. Here’s some info to fuel your curiosity." },
+                        { "scam", "That’s a great mindset! Understanding scams can protect you. Here’s some info to fuel your curiosity." },
+                        { "privacy", "That’s a great mindset! Privacy is crucial online. Here’s some info to fuel your curiosity." },
+                        { "malware", "That’s a great mindset! Knowing about malware can save your device. Here’s some info to fuel your curiosity." },
+                        { "wifi", "That’s a great mindset! Safe Wi-Fi use is important. Here’s some info to fuel your curiosity." },
+                        { "social", "That’s a great mindset! Social media safety is vital. Here’s some info to fuel your curiosity." },
+                        { "default", "That’s a great mindset! Cybersecurity is fascinating. Here’s some info to fuel your curiosity." }
+                    }
+                },
+                { "frustrated", new Dictionary<string, string>
+                    {
+                        { "password", "I hear you, passwords can be tough to manage. Don’t worry, I’m here to help with some simple tips." },
+                        { "phishing", "I hear you, phishing can be confusing. Don’t worry, I’m here to help with some clear tips." },
+                        { "scam", "I hear you, scams can be overwhelming. Don’t worry, I’m here to help with some practical tips." },
+                        { "privacy", "I hear you, privacy settings can be tricky. Don’t worry, I’m here to help with some easy tips." },
+                        { "malware", "I hear you, malware can be a headache. Don’t worry, I’m here to help with some straightforward tips." },
+                        { "wifi", "I hear you, Wi-Fi security can be complex. Don’t worry, I’m here to help with some useful tips." },
+                        { "social", "I hear you, social media can be tricky to secure. Don’t worry, I’m here to help with some simple tips." },
+                        { "default", "I hear you, cybersecurity can be overwhelming. Don’t worry, I’m here to help with some clear tips." }
+                    }
+                }
+            };
+        }
+
+        private void InitializeQuizQuestions()
+        {
+            quizQuestions = new List<QuizQuestion>
+            {
+                new QuizQuestion
+                {
+                    Question = "What should you do if you receive an email asking for your password?",
+                    Options = new List<string> { "Reply with your password", "Delete the email", "Report the email as phishing", "Ignore it" },
+                    CorrectAnswer = 2,
+                    Explanation = "Reporting phishing emails helps prevent scams and protects others."
+                },
+                new QuizQuestion
+                {
+                    Question = "Is 'password123' a secure password?",
+                    Options = new List<string> { "True", "False" },
+                    CorrectAnswer = 1,
+                    Explanation = "Simple passwords like 'password123' are easily guessed. Use complex passwords."
+                },
+                new QuizQuestion
+                {
+                    Question = "What is two-factor authentication?",
+                    Options = new List<string> { "A weak password", "An extra layer of security", "A type of virus", "A backup system" },
+                    CorrectAnswer = 1,
+                    Explanation = "Two-factor authentication adds an extra verification step to secure your accounts."
+                },
+                new QuizQuestion
+                {
+                    Question = "Should you use the same password for multiple accounts?",
+                    Options = new List<string> { "True", "False" },
+                    CorrectAnswer = 1,
+                    Explanation = "Using the same password across accounts increases risk if one is compromised."
+                },
+                new QuizQuestion
+                {
+                    Question = "What is a common sign of a phishing email?",
+                    Options = new List<string> { "A friendly greeting", "Urgent language or threats", "A long email", "A company logo" },
+                    CorrectAnswer = 1,
+                    Explanation = "Phishing emails often use urgent language to trick you into acting quickly."
+                },
+                new QuizQuestion
+                {
+                    Question = "Is it safe to click links in unsolicited emails?",
+                    Options = new List<string> { "True", "False" },
+                    CorrectAnswer = 1,
+                    Explanation = "Unsolicited email links may lead to malicious sites. Always verify the source."
+                },
+                new QuizQuestion
+                {
+                    Question = "What does HTTPS indicate on a website?",
+                    Options = new List<string> { "The site is free", "The site is secure", "The site is new", "The site is popular" },
+                    CorrectAnswer = 1,
+                    Explanation = "HTTPS means the website uses encryption to protect your data."
+                },
+                new QuizQuestion
+                {
+                    Question = "What is social engineering?",
+                    Options = new List<string> { "Hacking software", "Manipulating people to gain information", "Building secure systems", "Encrypting data" },
+                    CorrectAnswer = 1,
+                    Explanation = "Social engineering tricks people into revealing sensitive information."
+                },
+                new QuizQuestion
+                {
+                    Question = "Should you update software regularly?",
+                    Options = new List<string> { "True", "False" },
+                    CorrectAnswer = 0,
+                    Explanation = "Regular updates patch security vulnerabilities, keeping your system safe."
+                },
+                new QuizQuestion
+                {
+                    Question = "What is a strong password length?",
+                    Options = new List<string> { "4 characters", "8 characters", "12 characters or more", "Only numbers" },
+                    CorrectAnswer = 2,
+                    Explanation = "A strong password should be at least 12 characters with a mix of letters, numbers, and symbols."
+                }
+            };
+        }
+
+        private void AddTaskButton_Click(object sender, RoutedEventArgs e)
+        {
+            string title = TaskTitle.Text.Trim();
+            string description = TaskDescription.Text.Trim();
+            if (string.IsNullOrEmpty(title))
+            {
+                MessageBox.Show("Please enter a task title.");
+                return;
+            }
+
+            var task = new TaskItem { Title = title, Description = description };
+            if (ReminderCheckBox.IsChecked == true && ReminderDate.SelectedDate.HasValue)
+            {
+                task.Reminder = ReminderDate.SelectedDate.Value;
+                task.HasReminder = true;
+                LogActivity($"Reminder set for '{title}' on {task.Reminder:yyyy-MM-dd}");
+            }
+            else
+            {
+                LogActivity($"Task added: '{title}' (no reminder set)");
+            }
+            tasks.Add(task);
+            TaskList.Items.Refresh();
+            MessageBox.Show("Task added successfully!");
+            TaskTitle.Clear();
+            TaskDescription.Clear();
+            ReminderCheckBox.IsChecked = false;
+            ReminderDate.SelectedDate = null;
+        }
+
+        private void CompleteTaskButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is TaskItem task)
+            {
+                tasks.Remove(task);
+                TaskList.Items.Refresh();
+                LogActivity($"Task completed: '{task.Title}'");
+                MessageBox.Show("Task marked as completed!");
+            }
+        }
+
+        private void DeleteTaskButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is TaskItem task)
+            {
+                tasks.Remove(task);
+                TaskList.Items.Refresh();
+                LogActivity($"Task deleted: '{task.Title}'");
+                MessageBox.Show("Task deleted!");
+            }
+        }
+
+        private void StartQuizButton_Click(object sender, RoutedEventArgs e)
+        {
+            currentQuizQuestionIndex = 0;
+            quizScore = 0;
+            QuizFeedback.Text = "";
+            LogActivity("Quiz started");
+            DisplayQuizQuestion();
+        }
+
+        private void DisplayQuizQuestion()
+        {
+            if (currentQuizQuestionIndex >= quizQuestions.Count)
+            {
+                QuizQuestion.Text = "Quiz Completed!";
+                QuizOptionsPanel.Children.Clear();
+                string feedback = quizScore >= 8 ? "Great job! You’re a cybersecurity pro!" :
+                                 quizScore >= 5 ? "Good effort! Keep learning." :
+                                 "Keep studying to stay safe online!";
+                QuizFeedback.Text = $"Your score: {quizScore}/{quizQuestions.Count}\n{feedback}";
+                LogActivity($"Quiz completed with score: {quizScore}/{quizQuestions.Count}");
+                return;
+            }
+
+            var question = quizQuestions[currentQuizQuestionIndex];
+            QuizQuestion.Text = $"Question {currentQuizQuestionIndex + 1}: {question.Question}";
+            QuizOptionsPanel.Children.Clear();
+            for (int i = 0; i < question.Options.Count; i++)
+            {
+                var radioButton = new RadioButton
+                {
+                    Content = question.Options[i],
+                    GroupName = "QuizOptions",
+                    Margin = new Thickness(5),
+                    Tag = i
+                };
+                QuizOptionsPanel.Children.Add(radioButton);
+            }
+        }
+
+        private void SubmitQuizAnswer_Click(object sender, RoutedEventArgs e)
+        {
+            if (currentQuizQuestionIndex < 0 || currentQuizQuestionIndex >= quizQuestions.Count)
+            {
+                QuizFeedback.Text = "Please start the quiz first.";
+                return;
+            }
+
+            var question = quizQuestions[currentQuizQuestionIndex];
+            var selectedRadioButton = QuizOptionsPanel.Children.OfType<RadioButton>().FirstOrDefault(rb => rb.IsChecked == true);
+            if (selectedRadioButton == null)
+            {
+                QuizFeedback.Text = "Please select an answer.";
+                return;
+            }
+
+            int selectedAnswer = (int)selectedRadioButton.Tag;
+            QuizFeedback.Foreground = selectedAnswer == question.CorrectAnswer ? Brushes.Green : Brushes.Red;
+            if (selectedAnswer == question.CorrectAnswer)
+            {
+                quizScore++;
+                QuizFeedback.Text = $"Correct! {question.Explanation}";
+            }
+            else
+            {
+                QuizFeedback.Text = $"Incorrect. {question.Explanation}";
+            }
+
+            currentQuizQuestionIndex++;
+            DisplayQuizQuestion();
+        }
+
+        private void LogActivity(string action)
+        {
+            activityLog.Add($"{action}");
+            if (activityLog.Count > 10)
+                activityLog.RemoveAt(0); // Keep last 10 actions
+            ActivityLogList.Items.Refresh();
+        }
+    }
+
+    public class TaskItem
+    {
+        public string Title { get; set; }
+        public string Description { get; set; }
+        public DateTime? Reminder { get; set; }
+        public bool HasReminder { get; set; }
+        public string DisplayText => $"{Title}: {Description}{(HasReminder ? $" (Reminder: {Reminder:yyyy-MM-dd})" : "")}";
+    }
+
+    public class QuizQuestion
+    {
+        public string Question { get; set; }
+        public List<string> Options { get; set; }
+        public int CorrectAnswer { get; set; }
+        public string Explanation { get; set; }
+    }
+}
